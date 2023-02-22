@@ -1,10 +1,12 @@
 import * as Bull from 'bull';
 import Queue3 from 'bull';
 import { Queue as QueueMQ, QueueScheduler, Worker } from 'bullmq';
+import { QueuePro, WorkerPro } from '@taskforcesh/bullmq-pro';
 import express from 'express';
 import {
   ExpressAdapter,
   createBullBoard,
+  BullMQProAdapter,
   BullMQAdapter,
   BullAdapter,
 } from '@bull-board/express/src';
@@ -19,6 +21,7 @@ const sleep = (t: number) => new Promise((resolve) => setTimeout(resolve, t * 10
 
 const createQueue3 = (name: string) => new Queue3(name, { redis: redisOptions });
 const createQueueMQ = (name: string) => new QueueMQ(name, { connection: redisOptions });
+const createQueuePro = (name: string) => new QueuePro(name, { connection: redisOptions });
 
 function setupBullProcessor(bullQueue: Bull.Queue) {
   bullQueue.process(async (job) => {
@@ -56,14 +59,34 @@ async function setupBullMQProcessor(queueName: string) {
   );
 }
 
+async function setupBullMQProProcessor(queueName: string) {
+  new WorkerPro(
+    queueName,
+    async (job) => {
+      for (let i = 0; i <= 100; i++) {
+        await sleep(Math.random());
+        await job.updateProgress(i);
+        await job.log(`Processing job at interval ${i}`);
+
+        if (Math.random() * 200 < 1) throw new Error(`Random error ${i}`);
+      }
+
+      return { jobId: `This is the return value of job (${job.id})` };
+    },
+    { connection: redisOptions, concurrency: 5, group: { concurrency: 2 } }
+  );
+}
+
 const run = async () => {
   const app = express();
 
   const exampleBull = createQueue3('ExampleBull');
   const exampleBullMq = createQueueMQ('ExampleBullMQ');
+  const exampleBullMqPro = createQueuePro('ExampleBullMQPro');
 
   await setupBullProcessor(exampleBull); // needed only for example proposes
   await setupBullMQProcessor(exampleBullMq.name); // needed only for example proposes
+  await setupBullMQProProcessor(exampleBullMqPro.name); // needed only for example proposes
 
   app.use('/add', (req, res) => {
     const opts = req.query.opts || ({} as any);
@@ -74,6 +97,9 @@ const run = async () => {
 
     exampleBull.add({ title: req.query.title }, opts);
     exampleBullMq.add('Add', { title: req.query.title }, opts);
+    exampleBullMqPro.add('Add', { title: req.query.title }, {...opts, group: {
+      id: req.query.group ?? 'default'
+    }});
 
     res.json({
       ok: true,
@@ -84,7 +110,7 @@ const run = async () => {
   serverAdapter.setBasePath('/ui');
 
   createBullBoard({
-    queues: [new BullMQAdapter(exampleBullMq), new BullAdapter(exampleBull)],
+    queues: [new BullMQAdapter(exampleBullMq), new BullAdapter(exampleBull), new BullMQProAdapter(exampleBullMqPro)],
     serverAdapter,
   });
 

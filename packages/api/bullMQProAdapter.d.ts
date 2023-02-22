@@ -1,1 +1,1 @@
-export { BullMQAdapter } from './dist/src/queueAdapters/bullMQPro';
+export { BullMQProAdapter } from './dist/src/queueAdapters/bullMQPro';

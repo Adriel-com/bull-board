@@ -31,9 +31,9 @@ export class BullMQProAdapter extends BaseAdapter {
 
   public async getJobs(jobStatuses: JobStatus[], start?: number, end?: number): Promise<Job[]> {
     const gotJobs: Job[] = []
-    const isActiveIncluded = jobStatuses.includes(STATUSES.active);
-    const jobStatuseWithoutActive = jobStatuses.filter(status => status === STATUSES.active);
-    if(isActiveIncluded){
+    const isWaitingIncluded = jobStatuses.includes(STATUSES.waiting);
+    if(isWaitingIncluded){
+      // It will work if here's any group
       const groups = await this.queue.getGroups(start, end);
       const jobs = await Bluebird.map(groups, async group => {
         const groupJobs = await this.queue.getGroupJobs(group.id);
@@ -43,8 +43,8 @@ export class BullMQProAdapter extends BaseAdapter {
       });
       gotJobs.push(...jobs.flat() as unknown as Job[]);
     }
-    if(jobStatuseWithoutActive.length > 0){
-      const jobs = (await this.queue.getJobs(jobStatuseWithoutActive, start, end)) as unknown as Job[];
+    if(jobStatuses.length > 0){
+      const jobs = (await this.queue.getJobs(jobStatuses, start, end)) as unknown as Job[];
       gotJobs.push(...jobs);
     }
     return gotJobs;
