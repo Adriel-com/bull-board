@@ -28,8 +28,8 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@bull-board/api": "5.0.0",
-    "@bull-board/ui": "5.0.0",
+    "@bull-board/api": "https://gitpkg.now.sh/Adriel-com/bull-board/packages/api?master",
+    "@bull-board/ui": "https://gitpkg.now.sh/Adriel-com/bull-board/packages/ui?master",
     "@fastify/static": "^6.4.0",
     "@fastify/view": "^7.0.0",
     "ejs": "^3.1.8"
